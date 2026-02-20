@@ -83,8 +83,8 @@ jobs:
   deploy:
     needs: build
     if: |
-      needs.check-changes.outputs.src == 'true' &&
-      needs.check-changes.outputs.k8s == 'true'
+      github.event_name == 'push' &&
+      needs.build.outputs.k8s_updated == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
