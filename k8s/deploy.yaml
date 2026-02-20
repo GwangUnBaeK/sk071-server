@@ -21,7 +21,7 @@ spec:
       serviceAccountName: default
       containers:
       - name: myfirst-api-server
-        image: gwangun/sk071-server:7117326fe6163938a3e65686a3c427148a6cf259
+        image: gwangun/sk071-server:d5496a4791247f02a1822eda11f99e2a101db3d7
         imagePullPolicy: Always
         env:
         - name: USER_NAME
