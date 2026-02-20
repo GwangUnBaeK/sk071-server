@@ -8,6 +8,9 @@ on:
       - 'src/main/**'
       - 'k8s/*.yaml'
 
+permissions:
+  contents: write
+
 jobs:
   check-changes:
     runs-on: ubuntu-latest
