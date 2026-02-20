@@ -7,16 +7,34 @@ on:
     paths:
       - 'src/main/**'
       - 'k8s/*.yaml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/main/**'
 
 permissions:
   contents: write
 
 jobs:
+  ci:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build check
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+
   check-changes:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       src: ${{ steps.filter.outputs.src }}
-      k8s: ${{ steps.filter.outputs.k8s }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -25,13 +43,15 @@ jobs:
           filters: |
             src:
               - 'src/main/**'
-            k8s:
-              - 'k8s/*.yaml'
 
   build:
     needs: check-changes
-    if: needs.check-changes.outputs.src == 'true'
+    if: |
+      github.event_name == 'push' &&
+      needs.check-changes.outputs.src == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      k8s_updated: ${{ steps.update_k8s.outputs.k8s_updated }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -50,6 +70,7 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/sk071-server:${{ github.sha }}
 
       - name: Update k8s image tag
+        id: update_k8s
         run: |
           sed -i "s|image: gwangun/sk071-server:.*|image: gwangun/sk071-server:${{ github.sha }}|g" k8s/deploy.yaml
           git config user.name "github-actions"
@@ -57,12 +78,13 @@ jobs:
           git add k8s/deploy.yaml
           git commit -m "Update image tag to ${{ github.sha }}"
           git push
+          echo "k8s_updated=true" >> $GITHUB_OUTPUT
 
   deploy:
-    needs: [check-changes, build]
+    needs: build
     if: |
-      needs.check-changes.outputs.src == 'true' &&
-      needs.check-changes.outputs.k8s == 'true'
+      github.event_name == 'push' &&
+      needs.build.outputs.k8s_updated == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
