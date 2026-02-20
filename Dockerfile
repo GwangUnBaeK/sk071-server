@@ -1,21 +1,16 @@
-# 베이스 이미지로 OpenJDK 17 버전의 JRE 이미지 사용
-#FROM openjdk:17-jdk-slim
-FROM amdp-registry.skala-ai.com/library/openjdk:17-jdk-slim
-
-
-# 작업 디렉토리 설정
+# 1단계: 빌드
+FROM eclipse-temurin:17-jdk-jammy AS builder
 WORKDIR /app
+COPY .mvn/ .mvn/
+COPY mvnw pom.xml ./
+RUN ./mvnw dependency:go-offline
+COPY src/ src/
+RUN ./mvnw clean package -DskipTests
 
-# 외부에서 컨테이너의 8080 포트에 접근할 수 있도록 설정
+# 2단계: 실행
+FROM eclipse-temurin:17-jre-jammy
+WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
-
-# 외부에서 받아들일 변수 선언
-#ARG JAR_FILE
-
-# 애플리케이션의 jar 파일을 컨테이너에 추가
-#ADD ${JAR_FILE}  app.jar
-ADD ./target/spring-boot-app-0.0.1-SNAPSHOT.jar  app.jar
-
-# 애플리케이션 실행
-ENTRYPOINT ["java","-jar","app.jar"]
+COPY --from=builder /app/target/spring-boot-app-0.0.1-SNAPSHOT.jar app.jar
+ENTRYPOINT ["java", "-jar", "app.jar"]
