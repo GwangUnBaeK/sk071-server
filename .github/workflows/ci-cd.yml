@@ -105,12 +105,10 @@ jobs:
         run: echo "datetime=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
 
       - name: Create Release Note
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: release-${{ steps.datetime.outputs.datetime }}
-          release_name: release-${{ steps.datetime.outputs.datetime }}
+          name: release-${{ steps.datetime.outputs.datetime }}
           body: |
             ## 변경된 커밋 목록
             ${{ steps.commits.outputs.messages }}
