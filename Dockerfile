@@ -1,11 +1,10 @@
 # 1단계: 빌드
-FROM eclipse-temurin:17-jdk-jammy AS builder
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
 WORKDIR /app
-COPY .mvn/ .mvn/
-COPY mvnw pom.xml ./
-RUN ./mvnw dependency:go-offline
+COPY pom.xml ./
+RUN mvn dependency:go-offline
 COPY src/ src/
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests
 
 # 2단계: 실행
 FROM eclipse-temurin:17-jre-jammy
