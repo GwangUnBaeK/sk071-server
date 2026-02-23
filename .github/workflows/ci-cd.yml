@@ -113,8 +113,9 @@ jobs:
   deploy:
     needs: [check-changes, build]
     if: |
+      always() &&
       github.event_name == 'push' && (
-        needs.build.outputs.k8s_updated == 'true' ||
+        needs.build.result == 'success' ||
         needs.check-changes.outputs.k8s == 'true'
       )
     runs-on: ubuntu-latest
