@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: sk071-myfirst-ingress
-  namespace: default          # 네임스페이스 변경
+  namespace: default          
 spec:
   rules:
   - host: sk071.local         # 로컬 도메인으로 변경
