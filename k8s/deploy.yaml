@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sk071-myfirst-api-server
-  namespace: skala-practice
+  namespace: default                    
 spec:
   replicas: 1
   selector:
@@ -27,8 +27,6 @@ spec:
         - name: USER_NAME
           value: sk071
         - name: NAMESPACE
-          value: skala-practice
+          value: default                
         - name: SPRING_PROFILES_ACTIVE  
-          value: "prod"  
-
-# test direct k8s change_01
+          value: "dev"                  
