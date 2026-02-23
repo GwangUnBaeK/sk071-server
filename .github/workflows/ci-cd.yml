@@ -127,6 +127,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: main
 
       # 최근 10개 커밋 메시지를 가져와서 output으로 저장
       - name: Get commit messages
