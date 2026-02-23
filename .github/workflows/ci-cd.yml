@@ -109,6 +109,7 @@ jobs:
   #   1. build Job이 성공해서 k8s yaml을 자동 수정한 경우 (k8s_updated=true)
   #   2. 사용자가 직접 k8s/*.yaml을 수정한 경우 (k8s=true)
   # 목적: 릴리즈 노트 자동 생성 + minikube 로컬 클러스터에 실제 배포
+  # runs-on: self-hosted (Windows PowerShell에서 실행)
   deploy:
     needs: [check-changes, build]
     if: |
@@ -118,6 +119,9 @@ jobs:
         needs.check-changes.outputs.k8s == 'true'
       )
     runs-on: self-hosted
+    defaults:
+      run:
+        shell: powershell  # Windows PowerShell 문법 사용
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -127,18 +131,18 @@ jobs:
       # 최근 10개 커밋 메시지를 가져와서 output으로 저장
       - name: Get commit messages
         id: commits
-        shell: bash
         run: |
-          COMMITS=$(git log --pretty=format:"- %s" -10)
-          echo "messages<<EOF" >> $GITHUB_OUTPUT
-          echo "$COMMITS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          $commits = git log --pretty=format:"- %s" -10
+          echo "messages<<EOF" >> $env:GITHUB_OUTPUT
+          echo $commits >> $env:GITHUB_OUTPUT
+          echo "EOF" >> $env:GITHUB_OUTPUT
 
       # 릴리즈 노트 제목에 사용할 날짜시간 생성
       - name: Get current datetime
         id: datetime
-        shell: bash
-        run: echo "datetime=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+        run: |
+          $datetime = Get-Date -Format "yyyyMMdd-HHmmss"
+          echo "datetime=$datetime" >> $env:GITHUB_OUTPUT
 
       # GitHub Releases에 릴리즈 노트 자동 생성
       - name: Create Release Note
@@ -152,7 +156,6 @@ jobs:
 
       # minikube 로컬 클러스터에 실제 배포
       - name: Deploy to minikube
-        shell: bash
         run: |
           kubectl apply -f k8s/deploy.yaml
           kubectl apply -f k8s/service.yaml
