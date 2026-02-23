@@ -30,3 +30,5 @@ spec:
           value: skala-practice
         - name: SPRING_PROFILES_ACTIVE  
           value: "prod"  
+
+# test direct k8s change
