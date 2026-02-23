@@ -1,14 +1,11 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
   name: sk071-myfirst-ingress
-  namespace: skala-practice
+  namespace: default          # 네임스페이스 변경
 spec:
-  ingressClassName: public-nginx
   rules:
-  - host: sk071-ingress.skala25a.project.skala-ai.com
+  - host: sk071.local         # 로컬 도메인으로 변경
     http:
       paths:
       - backend:
@@ -18,7 +15,3 @@ spec:
               number: 8080
         path: /
         pathType: Prefix
-  tls:
-  - hosts:
-    - 'sk071-ingress.skala25a.project.skala-ai.com'
-    secretName: sk071-ingress-project-tls-cert
