@@ -117,7 +117,7 @@ jobs:
         needs.build.result == 'success' ||
         needs.check-changes.outputs.k8s == 'true'
       )
-    runs-on: self-hosted  # 내 PC에서 실행 (minikube 접근을 위해)
+    runs-on: self-hosted
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -127,6 +127,7 @@ jobs:
       # 최근 10개 커밋 메시지를 가져와서 output으로 저장
       - name: Get commit messages
         id: commits
+        shell: bash
         run: |
           COMMITS=$(git log --pretty=format:"- %s" -10)
           echo "messages<<EOF" >> $GITHUB_OUTPUT
@@ -136,6 +137,7 @@ jobs:
       # 릴리즈 노트 제목에 사용할 날짜시간 생성
       - name: Get current datetime
         id: datetime
+        shell: bash
         run: echo "datetime=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
 
       # GitHub Releases에 릴리즈 노트 자동 생성
@@ -150,6 +152,7 @@ jobs:
 
       # minikube 로컬 클러스터에 실제 배포
       - name: Deploy to minikube
+        shell: bash
         run: |
           kubectl apply -f k8s/deploy.yaml
           kubectl apply -f k8s/service.yaml
