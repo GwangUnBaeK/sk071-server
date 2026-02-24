@@ -17,9 +17,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              # =====================
               # 1. 이미지 태그 비교 (src/main 변경 대응)
-              # =====================
               LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/gwangun/sk071-server/tags?page_size=10" \
                 | grep -o '"name":"[^"]*"' \
                 | grep -v "latest" \
@@ -41,10 +39,7 @@ spec:
                 echo "Image tag no change. Skip."
               fi
 
-              # =====================
               # 2. k8s/*.yaml 변경 감지 (yaml 변경 대응)
-              # =====================
-
               # GitHub API로 main 브랜치 최신 커밋 해시 가져오기
               LATEST_COMMIT=$(curl -s \
                 "https://api.github.com/repos/GwangUnBaeK/sk071-server/commits/main" \
@@ -89,18 +84,24 @@ spec:
 
               echo "Changed files: $CHANGED_FILES"
 
-              # k8s/*.yaml 변경됐는지 확인
-              K8S_CHANGED=$(echo "$CHANGED_FILES" | grep "^k8s/.*\.yaml$")
+              # k8s/*.yaml 변경됐는지 확인 
+              K8S_CHANGED=$(echo "$CHANGED_FILES" | grep "^k8s/.*\.yaml$" | grep -v "cronjob" | grep -v "configmap")
 
               if [ -n "$K8S_CHANGED" ]; then
                 echo "k8s yaml changed. Applying..."
-                # Git에서 최신 yaml 가져와서 적용
-                cd /tmp
-                git clone https://github.com/GwangUnBaeK/sk071-server repo
-                kubectl apply -f /tmp/repo/k8s/deploy.yaml
-                kubectl apply -f /tmp/repo/k8s/service.yaml
-                kubectl apply -f /tmp/repo/k8s/ingress.yaml
-                rm -rf /tmp/repo
+                echo "Changed k8s files: $K8S_CHANGED"
+
+                # 필요한 파일만 직접 가져오기
+                curl -s "https://raw.githubusercontent.com/GwangUnBaeK/sk071-server/main/k8s/deploy.yaml" -o /tmp/deploy.yaml
+                curl -s "https://raw.githubusercontent.com/GwangUnBaeK/sk071-server/main/k8s/service.yaml" -o /tmp/service.yaml
+                curl -s "https://raw.githubusercontent.com/GwangUnBaeK/sk071-server/main/k8s/ingress.yaml" -o /tmp/ingress.yaml
+
+                # 이미지 태그를 최신 태그로 교체 (동시 변경 시 덮어씌워지는 문제 방지)
+                sed -i "s|image: gwangun/sk071-server:.*|image: gwangun/sk071-server:$LATEST_TAG|g" /tmp/deploy.yaml
+
+                kubectl apply -f /tmp/deploy.yaml
+                kubectl apply -f /tmp/service.yaml
+                kubectl apply -f /tmp/ingress.yaml
               else
                 echo "No k8s yaml change. Skip."
               fi

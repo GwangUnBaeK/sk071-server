@@ -5,7 +5,7 @@ metadata:
   name: sk071-myfirst-api-server
   namespace: default                    
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: sk071-myfirst-api-server
