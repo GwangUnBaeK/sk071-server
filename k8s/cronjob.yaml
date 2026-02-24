@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: auto-redeploy
+  namespace: default
+spec:
+  schedule: "*/3 * * * *"  # 3분마다 실행
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: auto-redeploy-sa
+          containers:
+          - name: redeploy
+            image: bitnami/kubectl:latest
+            command:
+            - /bin/sh
+            - -c
+            - |
+              # DockerHub에서 태그 목록 가져오기 (날짜 기준 최신)
+              LATEST=$(curl -s "https://hub.docker.com/v2/repositories/gwangun/sk071-server/tags?page_size=10" \
+                | grep -o '"name":"[^"]*"' \
+                | grep -v "latest" \
+                | head -1 \
+                | cut -d'"' -f4)
+
+              echo "Latest tag: $LATEST"
+
+              # 현재 배포된 태그 가져오기
+              CURRENT=$(kubectl get deployment sk071-myfirst-api-server \
+                -o jsonpath='{.spec.template.spec.containers[0].image}' \
+                | cut -d: -f2)
+
+              echo "Current tag: $CURRENT"
+
+              # 태그가 다르면 재배포
+              if [ "$LATEST" != "$CURRENT" ]; then
+                echo "Tag changed. Redeploying..."
+                kubectl set image deployment/sk071-myfirst-api-server \
+                  myfirst-api-server=gwangun/sk071-server:$LATEST
+              else
+                echo "No change. Skip."
+              fi
+          restartPolicy: OnFailure
