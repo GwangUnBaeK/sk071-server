@@ -4,7 +4,7 @@ metadata:
   name: auto-redeploy
   namespace: default
 spec:
-  schedule: "*/3 * * * *"  # 3분마다 실행
+  schedule: "*/3 * * * *"
   jobTemplate:
     spec:
       template:
@@ -17,28 +17,91 @@ spec:
             - /bin/sh
             - -c
             - |
-              # DockerHub에서 태그 목록 가져오기 (날짜 기준 최신)
-              LATEST=$(curl -s "https://hub.docker.com/v2/repositories/gwangun/sk071-server/tags?page_size=10" \
+              # =====================
+              # 1. 이미지 태그 비교 (src/main 변경 대응)
+              # =====================
+              LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/gwangun/sk071-server/tags?page_size=10" \
                 | grep -o '"name":"[^"]*"' \
                 | grep -v "latest" \
                 | head -1 \
                 | cut -d'"' -f4)
 
-              echo "Latest tag: $LATEST"
-
-              # 현재 배포된 태그 가져오기
-              CURRENT=$(kubectl get deployment sk071-myfirst-api-server \
+              CURRENT_TAG=$(kubectl get deployment sk071-myfirst-api-server \
                 -o jsonpath='{.spec.template.spec.containers[0].image}' \
                 | cut -d: -f2)
 
-              echo "Current tag: $CURRENT"
+              echo "Latest tag: $LATEST_TAG"
+              echo "Current tag: $CURRENT_TAG"
 
-              # 태그가 다르면 재배포
-              if [ "$LATEST" != "$CURRENT" ]; then
-                echo "Tag changed. Redeploying..."
+              if [ "$LATEST_TAG" != "$CURRENT_TAG" ]; then
+                echo "Image tag changed. Updating..."
                 kubectl set image deployment/sk071-myfirst-api-server \
-                  myfirst-api-server=gwangun/sk071-server:$LATEST
+                  myfirst-api-server=gwangun/sk071-server:$LATEST_TAG
               else
-                echo "No change. Skip."
+                echo "Image tag no change. Skip."
               fi
+
+              # =====================
+              # 2. k8s/*.yaml 변경 감지 (yaml 변경 대응)
+              # =====================
+
+              # GitHub API로 main 브랜치 최신 커밋 해시 가져오기
+              LATEST_COMMIT=$(curl -s \
+                "https://api.github.com/repos/GwangUnBaeK/sk071-server/commits/main" \
+                | grep -o '"sha":"[^"]*"' \
+                | head -1 \
+                | cut -d'"' -f4)
+
+              echo "Latest commit: $LATEST_COMMIT"
+
+              # ConfigMap에서 마지막 적용 커밋 해시 가져오기
+              LAST_COMMIT=$(kubectl get configmap deploy-state \
+                -o jsonpath='{.data.last-commit}' 2>/dev/null)
+
+              echo "Last applied commit: $LAST_COMMIT"
+
+              # 커밋 해시가 같으면 스킵
+              if [ "$LATEST_COMMIT" = "$LAST_COMMIT" ]; then
+                echo "No new commits. Skip."
+                exit 0
+              fi
+
+              # 마지막 적용 커밋 이후 변경된 파일 목록 가져오기
+              if [ -z "$LAST_COMMIT" ]; then
+                # 처음 실행이면 최신 커밋만 확인
+                CHANGED_FILES=$(curl -s \
+                  "https://api.github.com/repos/GwangUnBaeK/sk071-server/commits/main" \
+                  | grep -o '"filename":"[^"]*"' \
+                  | cut -d'"' -f4)
+              else
+                # 마지막 적용 커밋 이후 모든 커밋 변경 파일 확인
+                CHANGED_FILES=$(curl -s \
+                  "https://api.github.com/repos/GwangUnBaeK/sk071-server/compare/$LAST_COMMIT...$LATEST_COMMIT" \
+                  | grep -o '"filename":"[^"]*"' \
+                  | cut -d'"' -f4)
+              fi
+
+              echo "Changed files: $CHANGED_FILES"
+
+              # k8s/*.yaml 변경됐는지 확인
+              K8S_CHANGED=$(echo "$CHANGED_FILES" | grep "^k8s/.*\.yaml$")
+
+              if [ -n "$K8S_CHANGED" ]; then
+                echo "k8s yaml changed. Applying..."
+                # Git에서 최신 yaml 가져와서 적용
+                cd /tmp
+                git clone https://github.com/GwangUnBaeK/sk071-server repo
+                kubectl apply -f /tmp/repo/k8s/deploy.yaml
+                kubectl apply -f /tmp/repo/k8s/service.yaml
+                kubectl apply -f /tmp/repo/k8s/ingress.yaml
+                rm -rf /tmp/repo
+              else
+                echo "No k8s yaml change. Skip."
+              fi
+
+              # ConfigMap 마지막 적용 커밋 업데이트
+              kubectl patch configmap deploy-state \
+                --patch "{\"data\":{\"last-commit\":\"$LATEST_COMMIT\"}}"
+
+              echo "Done."
           restartPolicy: OnFailure

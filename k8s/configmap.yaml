@@ -1,0 +1,8 @@
+# k8s/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: deploy-state
+  namespace: default
+data:
+  last-commit: ""
