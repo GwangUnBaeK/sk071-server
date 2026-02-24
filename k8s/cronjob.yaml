@@ -48,7 +48,7 @@ spec:
               # GitHub API로 main 브랜치 최신 커밋 해시 가져오기
               LATEST_COMMIT=$(curl -s \
                 "https://api.github.com/repos/GwangUnBaeK/sk071-server/commits/main" \
-                | grep -o '"sha":"[^"]*"' \
+                | grep -o '"sha": "[^"]*"' \
                 | head -1 \
                 | cut -d'"' -f4)
 
@@ -71,13 +71,13 @@ spec:
                 # 처음 실행이면 최신 커밋만 확인
                 CHANGED_FILES=$(curl -s \
                   "https://api.github.com/repos/GwangUnBaeK/sk071-server/commits/main" \
-                  | grep -o '"filename":"[^"]*"' \
+                  | grep -o '"filename": "[^"]*"' \
                   | cut -d'"' -f4)
               else
                 # 마지막 적용 커밋 이후 모든 커밋 변경 파일 확인
                 CHANGED_FILES=$(curl -s \
                   "https://api.github.com/repos/GwangUnBaeK/sk071-server/compare/$LAST_COMMIT...$LATEST_COMMIT" \
-                  | grep -o '"filename":"[^"]*"' \
+                  | grep -o '"filename": "[^"]*"' \
                   | cut -d'"' -f4)
               fi
 
