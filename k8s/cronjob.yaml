@@ -84,7 +84,7 @@ spec:
 
               echo "Changed files: $CHANGED_FILES"
 
-              # k8s/*.yaml 변경됐는지 확인 
+              # k8s/*.yaml 변경됐는지 확인 (configmap, cronjob 관련 파일 제외)
               K8S_CHANGED=$(echo "$CHANGED_FILES" | grep "^k8s/.*\.yaml$" | grep -v "cronjob" | grep -v "configmap")
 
               if [ -n "$K8S_CHANGED" ]; then
@@ -96,8 +96,16 @@ spec:
                 curl -s "https://raw.githubusercontent.com/GwangUnBaeK/sk071-server/main/k8s/service.yaml" -o /tmp/service.yaml
                 curl -s "https://raw.githubusercontent.com/GwangUnBaeK/sk071-server/main/k8s/ingress.yaml" -o /tmp/ingress.yaml
 
-                # 이미지 태그를 최신 태그로 교체 (동시 변경 시 덮어씌워지는 문제 방지)
+                # 다운로드된 deploy.yaml 내용 출력 (디버그)
+                echo "=== deploy.yaml before sed ==="
+                cat /tmp/deploy.yaml
+
+                # 이미지 태그를 최신 태그로 교체
                 sed -i "s|image: gwangun/sk071-server:.*|image: gwangun/sk071-server:$LATEST_TAG|g" /tmp/deploy.yaml
+
+                # sed 적용 후 내용 출력 (디버그)
+                echo "=== deploy.yaml after sed ==="
+                cat /tmp/deploy.yaml
 
                 kubectl apply -f /tmp/deploy.yaml
                 kubectl apply -f /tmp/service.yaml
